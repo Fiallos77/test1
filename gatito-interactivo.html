@@ -54,6 +54,7 @@
 
   .stage video {
     z-index: 1;
+    transform-origin: center;
   }
 
   .stage.is-active img {
@@ -73,20 +74,30 @@
   const stage = document.getElementById('stage');
   const video = document.getElementById('video');
 
+  // El video hace un solo arco: centro -> gira hacia un lado -> vuelve al
+  // centro. El pico de giro queda a la mitad de la duracion. Para simular
+  // que la mirada sigue el mouse en ambos sentidos, usamos la distancia
+  // absoluta al centro para elegir el tiempo, y volteamos el video con
+  // CSS cuando el mouse esta del lado contrario al que gira el personaje
+  // de forma natural.
+
   let duration = 4;
+  let peakTime = 2;
   let targetTime = 0;
   let currentTime = 0;
+  let targetFlip = 1;
   let raf = null;
   let active = false;
 
   video.addEventListener('loadedmetadata', () => {
     duration = video.duration || 4;
+    peakTime = duration / 2;
     video.currentTime = 0;
   });
 
   function loop() {
     const diff = targetTime - currentTime;
-    currentTime += diff * 0.15;
+    currentTime += diff * 0.18;
 
     if (Math.abs(diff) < 0.001) {
       currentTime = targetTime;
@@ -95,6 +106,8 @@
     if (Number.isFinite(currentTime)) {
       video.currentTime = currentTime;
     }
+
+    video.style.transform = 'scaleX(' + targetFlip + ')';
 
     if (active || Math.abs(targetTime - currentTime) > 0.001) {
       raf = requestAnimationFrame(loop);
@@ -112,8 +125,15 @@
   function handleMove(e) {
     const rect = stage.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    const ratio = Math.min(Math.max(x / rect.width, 0), 1);
-    targetTime = ratio * duration;
+    const ratio = Math.min(Math.max(x / rect.width, 0), 1) * 2 - 1; // -1..1
+    const absRatio = Math.abs(ratio);
+
+    targetTime = absRatio * peakTime;
+    // El personaje gira de forma natural hacia un lado a medida que avanza
+    // el tiempo. Si el mouse esta del lado contrario, volteamos el video
+    // para que la cabeza parezca girar hacia el mouse.
+    targetFlip = ratio > 0 ? -1 : 1;
+
     ensureLoop();
   }
 
@@ -128,6 +148,7 @@
   stage.addEventListener('mouseleave', () => {
     active = false;
     targetTime = 0;
+    targetFlip = 1;
     stage.classList.remove('is-active');
     ensureLoop();
   });
