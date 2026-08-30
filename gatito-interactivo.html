@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gatito interactivo</title>
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --card-bg: #f5a623;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  .stage {
+    position: relative;
+    width: min(90vw, 420px);
+    aspect-ratio: 9 / 16;
+    border-radius: 24px;
+    overflow: hidden;
+    background: var(--card-bg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+  }
+
+  .stage img,
+  .stage video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .stage img {
+    z-index: 2;
+    opacity: 1;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+  }
+
+  .stage video {
+    z-index: 1;
+  }
+
+  .stage.is-active img {
+    opacity: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <img id="poster" src="gato.jpeg" alt="Gatito con capucha amarilla">
+  <video id="video" src="video.mp4" muted playsinline preload="auto"></video>
+</div>
+
+<script>
+(() => {
+  const stage = document.getElementById('stage');
+  const video = document.getElementById('video');
+
+  let duration = 4;
+  let targetTime = 0;
+  let currentTime = 0;
+  let raf = null;
+  let active = false;
+
+  video.addEventListener('loadedmetadata', () => {
+    duration = video.duration || 4;
+    video.currentTime = 0;
+  });
+
+  function loop() {
+    const diff = targetTime - currentTime;
+    currentTime += diff * 0.15;
+
+    if (Math.abs(diff) < 0.001) {
+      currentTime = targetTime;
+    }
+
+    if (Number.isFinite(currentTime)) {
+      video.currentTime = currentTime;
+    }
+
+    if (active || Math.abs(targetTime - currentTime) > 0.001) {
+      raf = requestAnimationFrame(loop);
+    } else {
+      raf = null;
+    }
+  }
+
+  function ensureLoop() {
+    if (!raf) {
+      raf = requestAnimationFrame(loop);
+    }
+  }
+
+  function handleMove(e) {
+    const rect = stage.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const ratio = Math.min(Math.max(x / rect.width, 0), 1);
+    targetTime = ratio * duration;
+    ensureLoop();
+  }
+
+  stage.addEventListener('mouseenter', () => {
+    active = true;
+    stage.classList.add('is-active');
+    ensureLoop();
+  });
+
+  stage.addEventListener('mousemove', handleMove);
+
+  stage.addEventListener('mouseleave', () => {
+    active = false;
+    targetTime = 0;
+    stage.classList.remove('is-active');
+    ensureLoop();
+  });
+})();
+</script>
+
+</body>
+</html>
