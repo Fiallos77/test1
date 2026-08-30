@@ -89,6 +89,7 @@
   let peakTime = 2;
   let pendingTime = null;
   let isSeeking = false;
+  let watchdog = null;
 
   video.addEventListener('loadedmetadata', () => {
     duration = video.duration || 4;
@@ -101,9 +102,19 @@
     pendingTime = null;
     isSeeking = true;
     video.currentTime = t;
+
+    // Si el tiempo pedido cae casi exacto sobre el tiempo actual, el
+    // navegador no dispara 'seeked' porque no hubo cambio real, y la
+    // bandera se quedaria trabada. Este watchdog libera igual.
+    clearTimeout(watchdog);
+    watchdog = setTimeout(() => {
+      isSeeking = false;
+      doSeek();
+    }, 120);
   }
 
   video.addEventListener('seeked', () => {
+    clearTimeout(watchdog);
     isSeeking = false;
     doSeek();
   });
